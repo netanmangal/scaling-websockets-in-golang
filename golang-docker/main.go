@@ -1,7 +1,19 @@
 package main
 
-import "fmt"
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
 
 func main() {
-	fmt.Println("Hello World - from inside the docker container.")
+	r := gin.Default()
+
+	r.GET("/ping", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, map[string]string{
+			"message": "pong",
+		})
+	})
+
+	r.Run()
 }
