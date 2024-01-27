@@ -5,6 +5,11 @@ WORKDIR /app
 COPY go.mod .
 COPY main.go .
 
+ENV PORT=3000
+
+RUN go get
 RUN go build -o bin .
+
+EXPOSE 3000
 
 ENTRYPOINT [ "/app/bin" ]

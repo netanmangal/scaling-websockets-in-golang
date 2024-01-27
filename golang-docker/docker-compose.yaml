@@ -1,0 +1,6 @@
+version: "3.8"
+services:
+  go-web-server:
+    image: go-home-api:latest
+    ports:
+      - 3000:3000
