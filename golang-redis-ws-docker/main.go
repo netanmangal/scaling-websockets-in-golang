@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
+	"github.com/joho/godotenv"
 	"golang.org/x/net/websocket"
 )
 
@@ -53,11 +55,19 @@ func (s *Server) broadcast(msg []byte) {
 }
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Println("Error loading envs : ", err)
+	}
+
 	server := NewServer()
 
 	http.Handle("/ws", websocket.Handler(server.handleIncomingWSRequest))
 	fmt.Println("Setting up the handler")
 
-	fmt.Println("Server is listening on port 3000")
-	http.ListenAndServe(":3000", nil)
+	fmt.Println("Server is listening on port : ", os.Getenv("PORT"))
+	http.ListenAndServe(":"+os.Getenv("PORT"), nil)
+	if err != nil {
+		fmt.Println("Error starting the server : ", err)
+	}
 }
