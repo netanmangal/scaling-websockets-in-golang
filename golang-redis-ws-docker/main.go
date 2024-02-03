@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
@@ -68,7 +67,6 @@ func (s *Server) SubscribeRedis(ctx context.Context) {
 	defer sub.Close()
 
 	for {
-		time.Sleep(time.Millisecond * 5000)
 		msg, err := sub.ReceiveMessage(ctx)
 		if err != nil {
 			fmt.Println("Error receiving messages from Redis")
