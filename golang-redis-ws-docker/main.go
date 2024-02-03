@@ -1,32 +1,40 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 
 	"github.com/joho/godotenv"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/net/websocket"
 )
 
 type Server struct {
-	conns map[*websocket.Conn]bool
+	conns       map[*websocket.Conn]bool
+	redisClient *redis.Client
 }
 
 func NewServer() (s *Server) {
 	return &Server{
 		conns: make(map[*websocket.Conn]bool),
+		redisClient: redis.NewClient(&redis.Options{
+			Addr:     os.Getenv("REDISURI"),
+			DB:       0,
+			Password: "",
+		}),
 	}
 }
 
-func (s *Server) handleIncomingWSRequest(ws *websocket.Conn) {
+func (s *Server) handleIncomingWSRequest(ctx context.Context, ws *websocket.Conn) {
 	fmt.Println("New incoming ws connection request from client : ", ws.RemoteAddr())
 	s.conns[ws] = true
-	s.readLoopForSocket(ws)
+	s.readLoopForSocket(ctx, ws)
 }
 
-func (s *Server) readLoopForSocket(ws *websocket.Conn) {
+func (s *Server) readLoopForSocket(ctx context.Context, ws *websocket.Conn) {
 	buf := make([]byte, 1024)
 
 	for {
@@ -42,7 +50,7 @@ func (s *Server) readLoopForSocket(ws *websocket.Conn) {
 
 		msg := buf[:n]
 		fmt.Println("message : ", string(msg), " - client: ", ws.RemoteAddr())
-		s.broadcast(msg)
+		s.redisClient.Publish(ctx, "message-chat", msg)
 	}
 }
 
@@ -54,6 +62,23 @@ func (s *Server) broadcast(msg []byte) {
 	}
 }
 
+func (s *Server) SubscribeRedis(ctx context.Context) {
+	sub := s.redisClient.Subscribe(ctx, "message-chat")
+	defer sub.Close()
+
+	for {
+		msg, err := sub.ReceiveMessage(ctx)
+		if err != nil {
+			fmt.Println("Error receiving messages from Redis")
+		}
+
+		if msg.Payload != "" {
+			s.broadcast([]byte(msg.Payload))
+			fmt.Println("Broadcasting complete for message : ", msg.Payload)
+		}
+	}
+}
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
@@ -61,8 +86,12 @@ func main() {
 	}
 
 	server := NewServer()
+	ctx := context.Background()
+	go server.SubscribeRedis(ctx)
 
-	http.Handle("/ws", websocket.Handler(server.handleIncomingWSRequest))
+	http.Handle("/ws", websocket.Handler(func(conn *websocket.Conn) {
+		server.handleIncomingWSRequest(ctx, conn)
+	}))
 	fmt.Println("Setting up the handler")
 
 	fmt.Println("Server is listening on port : ", os.Getenv("PORT"))
