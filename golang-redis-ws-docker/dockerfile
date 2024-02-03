@@ -1,0 +1,17 @@
+FROM golang:1.21.5
+
+WORKDIR /app
+
+COPY go.mod .
+COPY go.sum .
+COPY main.go .
+
+ENV PORT=3000
+ENV REDISURI=host.docker.internal:6379
+
+RUN go get
+RUN go build -o bin .
+
+EXPOSE 3000
+
+ENTRYPOINT [ "/app/bin" ]
