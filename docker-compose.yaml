@@ -1,0 +1,49 @@
+version: "3.8"
+services:
+  lb:
+    image: haproxy:latest
+    ports:
+      - 8080:8080
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - gohomecontainer1
+      - gohomecontainer2
+      - gohomecontainer3
+
+  some-redis:
+    image: redis:latest
+    ports:
+      - 6379:6379
+    command:
+      - "--loglevel debug"
+
+  gohomecontainer1:
+    image: gohome:latest
+    ports:
+      - 3001:3001
+    environment:
+      - PORT=3001
+      - REDISURI=some-redis:6379
+    depends_on:
+      - some-redis
+
+  gohomecontainer2:
+    image: gohome:latest
+    ports:
+      - 3002:3002
+    environment:
+      - PORT=3002
+      - REDISURI=some-redis:6379
+    depends_on:
+      - some-redis
+
+  gohomecontainer3:
+    image: gohome:latest
+    ports:
+      - 3003:3003
+    environment:
+      - PORT=3003
+      - REDISURI=some-redis:6379
+    depends_on:
+      - some-redis
